@@ -2,7 +2,7 @@
 (require "contract.rkt")
 
 (define-struct dv (vec-length next-avail-pos vec) #:mutable)
-
+  
 (define (dv:make size)
   (make-dv size 0 (make-vector size)))
 
@@ -44,15 +44,59 @@
 (define (non-empty-dv? dv)
   ((dv:length dv) . > . 0))
 
+#|Contracts|#
+(define vec-length/c natural-number/c)
+
+(define vec/c vector?)
+
+(define vec-pos/c natural-number/c)
+
+(define dv/c (struct/dc dv 
+                        [vec-length vec-length/c] 
+                        [next-avail-pos (vec) (and/c natural-number/c (<=/c (vector-length vec)))]
+                        [vec vec/c]))
+
+(define dv:length/c (-> dv? natural-number/c))
+
+(define dv:make/c (-> natural-number/c dv?))
+
+(define dv:remove-last/c (-> dv? void))
+
+(define dv:ref/c (->i ([a-dv dv?] 
+                       [pos (a-dv) (and/c (<=/c (dv:length a-dv) vec-pos/c))])
+                      [_ any/c]))
+
+;;Uncomment the following provide and provide/contract* forms to demonstrate the problem.
+(provide
+ (contract-out [dv? (any/c . -> . boolean?)]
+               [dv:make dv:make/c]
+               [dv:length dv:length/c]
+               [dv:remove-last dv:remove-last/c]
+               [dv:ref dv:ref/c]))
+
 (provide/contract*
- [dv? (any/c . -> . boolean?)]
- [dv:make (exact-nonnegative-integer? . -> . dv?)]
- [dv:length (dv? . -> . exact-nonnegative-integer?)]
- [dv:remove-last (non-empty-dv? . -> . void)]
- [dv:ref (->d ([dv dv?] [pos exact-nonnegative-integer?]) () 
+ #;[dv? (any/c . -> . boolean?)]
+ #;[dv:make (exact-nonnegative-integer? . -> . dv?)]
+ #;[dv:length (dv? . -> . exact-nonnegative-integer?)]
+ #;[dv:remove-last (non-empty-dv? . -> . void?)]
+ #;[dv:ref (->d ([dv dv?] [pos exact-nonnegative-integer?]) () 
               #:pre-cond (pos . < . (dv:length dv))
               [r any/c])]
  [dv:set! (->d ([dv dv?] [pos exact-nonnegative-integer?] [val any/c]) () 
                #:pre-cond (pos . < . (dv:length dv))
                [r void])]
  [dv:append (dv? any/c . -> . void)])
+
+;;One of this form or the two immediately above need to be commented out. 
+#;(provide/contract*
+   [dv? (any/c . -> . boolean?)]
+   [dv:make (exact-nonnegative-integer? . -> . dv?)]
+   [dv:length (dv? . -> . exact-nonnegative-integer?)]
+   [dv:remove-last (non-empty-dv? . -> . void?)]
+   [dv:ref (->d ([dv dv?] [pos exact-nonnegative-integer?]) () 
+                #:pre-cond (pos . < . (dv:length dv))
+                [r any/c])]
+   [dv:set! (->d ([dv dv?] [pos exact-nonnegative-integer?] [val any/c]) () 
+                 #:pre-cond (pos . < . (dv:length dv))
+                 [r void])]
+   [dv:append (dv? any/c . -> . void)])
