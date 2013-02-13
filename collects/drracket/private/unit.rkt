@@ -267,13 +267,16 @@ module browser threading seems wrong.
          ;; find-searchable-tokens : number number -> (or/c #f (list symbol number number))
          (define (find-searchable-tokens start end)
            (define tokens (get-tokens start end))
-           (define raw-tokens (map (λ (x) (list-ref x 0)) tokens))
-           (cond
-             [(equal? raw-tokens '(symbol))
-              (car tokens)]
-             [(equal? raw-tokens '(constant symbol))
-              (cadr tokens)]
-             [else #f]))
+           (for/or ([tok tokens])
+             (define type (list-ref tok 0))
+             (cond [(or (eq? type 'symbol)
+                        (eq? type 'hash-colon-keyword)
+                        ;; The token may have been categorized as a keyword due to
+                        ;; its presence in the tabification preferences:
+                        (eq? type 'keyword))
+                    tok]
+                   [else
+                    #f])))
          
          (define searchable-token 
            (or (and before before+ 
@@ -3400,8 +3403,6 @@ module browser threading seems wrong.
         (set-show-menu-sort-key logger-menu-item 205)
         
         
-        
-          
         (set! show-line-numbers-menu-item
               (new menu:can-restore-menu-item%
                    [label (if (show-line-numbers?)
@@ -3413,6 +3414,32 @@ module browser threading seems wrong.
                                (preferences:set 'drracket:show-line-numbers? (not value))
                                (show-line-numbers! (not value)))]))
         (set-show-menu-sort-key show-line-numbers-menu-item 302)
+        
+        (let ()
+          (define (font-adjust adj label key shortcut)
+            (define (adj-font _1 _2)
+              (preferences:set
+               'framework:standard-style-list:font-size
+               (adj (preferences:get
+                     'framework:standard-style-list:font-size))))
+            (define (on-demand item)
+              (define lab 
+                (format 
+                 label 
+                 (adj 
+                  (preferences:get
+                   'framework:standard-style-list:font-size))))
+              (send item set-label lab))
+            (define item
+             (new menu:can-restore-menu-item%
+                  (shortcut shortcut)
+                  (label "")
+                  (parent (get-show-menu))
+                  (callback adj-font)
+                  (demand-callback on-demand)))
+            (set-show-menu-sort-key item key))
+          (font-adjust add1 (string-constant increase-font-size) -2 #\=)
+          (font-adjust sub1 (string-constant decrease-font-size) -3 #\-))
         
         (let ([split
                (new menu:can-restore-menu-item%
